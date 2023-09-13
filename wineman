@@ -1,0 +1,34 @@
+#!/bin/sh -a
+set -e
+SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+. "$SCRIPTPATH/config.sh"
+
+if [ "$1" = "" ]
+then
+    echo "Usage: wineman [APPLICATION]"
+    exit 1
+fi
+
+if [ "$1" = "clean" ]
+then
+    echo "Cleaning up..."
+    rm -rf "$ROOT_PATH/shadercache/"*
+    rm -rf "$ROOT_PATH/prefix/"*
+    rm -rf "$ROOT_PATH/applications/"*
+    rm -rf "$ROOT_PATH/deps/"*
+    rm -rf "$ROOT_PATH/tmp/"*
+    echo "Success!"
+    exit 0
+fi
+
+target_application="$1"
+
+. "$ROOT_PATH/applications/$target_application/application.conf"
+. "$ROOT_PATH/applications/$target_application/environment.conf"
+
+__GL_SHADER_DISK_CACHE_PATH="$APPLICATION_SHADER_CACHE"
+DXVK_CONFIG_FILE="$APPLICATION_DXVK_CONFIG"
+WINEPREFIX="$APPLICATION_PREFIX"
+
+cd --
+"$WINE" "$APPLICATION_EXECUTABLE"
