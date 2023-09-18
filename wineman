@@ -149,7 +149,7 @@ then
     echo "Name=$application_name" >> "$application_dir/$application_name.desktop"
     echo "Icon=$application_dir/icon" >> "$application_dir/$application_name.desktop"
     echo "Path=$WINEMAN_EXECUTABLE_DIR" >> "$application_dir/$application_name.desktop"
-    echo "Exec=$WINEMAN_EXECUTABLE_DIR/wineman run $application_name" >> "$application_dir/$application_name.desktop"
+    echo "Exec=$WINEMAN_EXECUTABLE_DIR/wineman run \"$application_name\"" >> "$application_dir/$application_name.desktop"
     chmod +x "$application_dir/$application_name.desktop"
     
     if [ -d "$HOME/.local/share/applications" ]
