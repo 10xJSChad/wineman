@@ -13,6 +13,7 @@ WINE_URL="https://github.com/GloriousEggroll/wine-ge-custom/releases/download/GE
 WINETRICKS_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
 DXVK_CONF_URL="https://raw.githubusercontent.com/10xJSChad/wineman/master/defaults/dxvk.conf"
 ENVIRONMENT_SH_URL="https://raw.githubusercontent.com/10xJSChad/wineman/master/defaults/environment.sh"
+ICON_URL="https://github.com/10xJSChad/wineman/raw/master/defaults/icon"
 
 WINEDEBUG="-all"
 WINEPREFIX="$WINEMAN_ROOT/prefix/pf_base"
@@ -25,7 +26,12 @@ command="$1"
 
 if [ "$command" = "" ]
 then
-    echo "Usage goes here"
+    echo "usage: wineman [COMMAND] [ARGS]"
+    echo "commands:"
+    echo "  wineman setup"
+    echo "  wineman cleanup"
+    echo "  wineman run [APPLICATION NAME]"
+    echo "  wineman add [APPLICATION NAME] [APPLICATION EXECUTABLE]"
     exit 1
 fi
 
@@ -61,6 +67,9 @@ then
 
     echo "Downloading dxvk.conf"
     curl "$DXVK_CONF_URL" > "$WINEMAN_ROOT/defaults/dxvk.conf"
+
+    echo "Downloading icon"
+    wget "$ICON_URL" -O "$WINEMAN_ROOT/defaults/icon"
 
     echo "Creating base prefix"
 
