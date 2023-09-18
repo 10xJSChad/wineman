@@ -1,5 +1,7 @@
 #!/bin/sh -a
 
+WINEMAN_EXECUTABLE_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
 if [ "$XDG_DATA_HOME" = "" ]
 then
     WINEMAN_ROOT="$HOME/.local/share/wineman"
@@ -9,6 +11,8 @@ fi
 
 WINE_URL="https://github.com/GloriousEggroll/wine-ge-custom/releases/download/GE-Proton8-14/wine-lutris-GE-Proton8-14-x86_64.tar.xz"
 WINETRICKS_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
+DXVK_CONF_URL="https://raw.githubusercontent.com/10xJSChad/wineman/master/defaults/dxvk.conf"
+ENVIRONMENT_SH_URL="https://raw.githubusercontent.com/10xJSChad/wineman/master/defaults/environment.sh"
 
 WINEDEBUG="-all"
 WINEPREFIX="$WINEMAN_ROOT/prefix/pf_base"
@@ -51,6 +55,12 @@ then
     echo "Downloading winetricks"
     curl "$WINETRICKS_URL" > "$WINETRICKS"
     chmod +x "$WINETRICKS"
+
+    echo "Downloading environment.sh"
+    curl "$ENVIRONMENT_SH_URL" > "$WINEMAN_ROOT/defaults/environment.sh"
+
+    echo "Downloading dxvk.conf"
+    curl "$DXVK_CONF_URL" > "$WINEMAN_ROOT/defaults/dxvk.conf"
 
     echo "Creating base prefix"
 
@@ -124,6 +134,28 @@ then
     echo "APP_NAME=\"$application_name\"" >> "$application_config"
     echo "APP_EXECUTABLE=\"$application_executable\"" >> "$application_config"
     echo "APP_ENVIRONMENT=\"$application_dir/environment.sh\"" >> "$application_config"
+
+    echo "[Desktop Entry]" > "$application_dir/$application_name.desktop"
+    echo "Type=Application" >> "$application_dir/$application_name.desktop"
+    echo "Name=$application_name" >> "$application_dir/$application_name.desktop"
+    echo "Icon=$application_dir/icon" >> "$application_dir/$application_name.desktop"
+    echo "Path=$WINEMAN_EXECUTABLE_DIR" >> "$application_dir/$application_name.desktop"
+    echo "Exec=$WINEMAN_EXECUTABLE_DIR/wineman run $application_name" >> "$application_dir/$application_name.desktop"
+    chmod +x "$application_dir/$application_name.desktop"
+    
+    if [ -d "$HOME/.local/share/applications" ]
+    then
+        ln -s "$application_dir/$application_name.desktop" "$HOME/.local/share/applications/wineman_$application_name.desktop" 
+    fi
+fi
+
+
+if [ "$command" = "cleanup" ]
+then
+    if [ -d "$HOME/.local/share/applications" ]
+    then
+        rm "$HOME/.local/share/applications/wineman_"*
+    fi
 fi
 
 
