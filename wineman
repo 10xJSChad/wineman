@@ -1,34 +1,147 @@
 #!/bin/sh -a
-set -e
-SCRIPTPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-. "$SCRIPTPATH/config.sh"
 
-if [ "$1" = "" ]
+if [ "$XDG_DATA_HOME" = "" ]
 then
-    echo "Usage: wineman [APPLICATION]"
+    WINEMAN_ROOT="$HOME/.local/share/wineman"
+else
+    WINEMAN_ROOT="$XDG_DATA_HOME"
+fi
+
+WINE_URL="https://github.com/GloriousEggroll/wine-ge-custom/releases/download/GE-Proton8-14/wine-lutris-GE-Proton8-14-x86_64.tar.xz"
+WINETRICKS_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
+
+WINEDEBUG="-all"
+WINEPREFIX="$WINEMAN_ROOT/prefix/pf_base"
+WINETRICKS="$WINEMAN_ROOT/deps/winetricks"
+WINEBOOT="$WINEMAN_ROOT/deps/wine/bin/wineboot"
+WINE="$WINEMAN_ROOT/deps/wine/bin/wine"
+WINESERVER="$WINEMAN_ROOT/deps/wine/bin/wineserver"
+
+command="$1"
+
+if [ "$command" = "" ]
+then
+    echo "Usage goes here"
     exit 1
 fi
 
-if [ "$1" = "clean" ]
+if [ "$command" = "setup" ]
 then
-    echo "Cleaning up..."
-    rm -rf "$ROOT_PATH/shadercache/"*
-    rm -rf "$ROOT_PATH/prefix/"*
-    rm -rf "$ROOT_PATH/applications/"*
-    rm -rf "$ROOT_PATH/deps/"*
-    rm -rf "$ROOT_PATH/tmp/"*
+    echo "Starting wineman setup"
+    mkdir "$WINEMAN_ROOT"
+    mkdir "$WINEMAN_ROOT/applications" 
+    mkdir "$WINEMAN_ROOT/defaults" 
+    mkdir "$WINEMAN_ROOT/deps" 
+    mkdir "$WINEMAN_ROOT/prefix" 
+    mkdir "$WINEMAN_ROOT/shadercache" 
+    mkdir "$WINEMAN_ROOT/tmp"
+
+    echo "Downloading wine"
+    wget "$WINE_URL" -O "$WINEMAN_ROOT/tmp/wine.tar"
+
+    echo "Extracting wine to $WINEMAN_ROOT/deps"
+    tar -xf "$WINEMAN_ROOT/tmp/wine.tar" -C "$WINEMAN_ROOT/deps"
+
+    echo "Renaming extracted directory"
+    mv "$WINEMAN_ROOT/deps/"* "$WINEMAN_ROOT/deps/wine"
+
+    echo "Deleting wine tarball"
+    rm "$WINEMAN_ROOT/tmp/wine.tar"
+
+    echo "Downloading winetricks"
+    curl "$WINETRICKS_URL" > "$WINETRICKS"
+    chmod +x "$WINETRICKS"
+
+    echo "Creating base prefix"
+
+    echo "Installing corefonts"
+    "$WINETRICKS" -q corefonts
+
+    # echo "Installing ie8"
+    # sh "$WINETRICKS" -q ie8
+
+    echo "Installing dxvk"
+    "$WINETRICKS" -q dxvk
+
+    echo "Installing vkd3d"
+    "$WINETRICKS" -q vkd3d
+
+    echo "Enabling csmt"
+    "$WINETRICKS" csmt=on
+
+    echo "Setting Windows version to win10"
+
+    sed -i '/CurrentBuildNumber/c\"CurrentBuildNumber"="19042"' "$WINEPREFIX/system.reg"
+    sed -i '/CurrentBuild"/c\"CurrentBuild"="19042"' "$WINEPREFIX/system.reg"
+
+    echo "Initializing prefix"
+    exec "$WINEBOOT"
+
     echo "Success!"
     exit 0
 fi
 
-target_application="$1"
 
-. "$ROOT_PATH/applications/$target_application/application.conf"
-. "$ROOT_PATH/applications/$target_application/environment.conf"
+if [ "$command" = "add" ]
+then
+    if [ "$2" = "" ] || [ "$3" = "" ]
+    then
+        echo "Syntax error"
+    fi
 
-__GL_SHADER_DISK_CACHE_PATH="$APPLICATION_SHADER_CACHE"
-DXVK_CONFIG_FILE="$APPLICATION_DXVK_CONFIG"
-WINEPREFIX="$APPLICATION_PREFIX"
+    application_name="$2"
+    application_executable=$(realpath "$3")
+    application_dir="$WINEMAN_ROOT/applications/$application_name"
+    application_config="$application_dir/config.sh"
 
-cd --
-"$WINE" "$APPLICATION_EXECUTABLE"
+    source_prefix="$WINEMAN_ROOT/prefix/pf_base"
+    destination_prefix="$WINEMAN_ROOT/prefix/pf_$application_name"
+
+    cp -Rsn "$source_prefix/." "$destination_prefix"
+    find "$destination_prefix" -type l    \
+    ! -name "*.exe" \
+    ! -name "*.dll" \
+    ! -name "*.ttf" \
+    ! -name "*.installed" \
+    ! -name "*.000" \
+    ! -name "*.wav" \
+    ! -name "*.drv" \
+    ! -name "*.sys" \
+    ! -name "*.msi" \
+    ! -name "*.nls" \
+    -delete
+
+    cp -rn "$source_prefix/." "$destination_prefix"
+
+    mkdir "$WINEMAN_ROOT/shadercache/$application_name"
+    mkdir "$application_dir"
+
+    ln -s "$WINEMAN_ROOT/shadercache/$application_name" "$application_dir/shadercache"
+    ln -s "$WINEMAN_ROOT/prefix/pf_$application_name" "$application_dir/prefix"
+    cp -Rsn "$WINEMAN_ROOT/defaults/". "$application_dir"
+
+    echo "#!/bin/sh -a" > "$application_config"
+    echo "APP_NAME=\"$application_name\"" >> "$application_config"
+    echo "APP_EXECUTABLE=\"$application_executable\"" >> "$application_config"
+    echo "APP_ENVIRONMENT=\"$application_dir/environment.sh\"" >> "$application_config"
+fi
+
+
+if [ "$command" = "run" ]
+then
+    if [ "$2" = "" ]
+    then
+        echo "Syntax error"
+    fi
+
+    application_name="$2"
+    application_dir="$WINEMAN_ROOT/applications/$application_name"
+    application_config="$application_dir/config.sh"
+    
+    WINEMAN_APP_DIR="$application_dir"
+
+    . "$application_config"
+    . "$APP_ENVIRONMENT"
+
+    "$WINE" "$APP_EXECUTABLE"
+fi
