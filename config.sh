@@ -1,7 +1,0 @@
-ROOT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-WINE_URL="https://github.com/GloriousEggroll/wine-ge-custom/releases/download/GE-Proton8-14/wine-lutris-GE-Proton8-14-x86_64.tar.xz"
-WINEPREFIX="$ROOT_PATH/prefix/pf_base"
-WINETRICKS="$ROOT_PATH/deps/winetricks"
-WINEBOOT="$ROOT_PATH/deps/wine/bin/wineboot"
-WINE="$ROOT_PATH/deps/wine/bin/wine"
-WINESERVER="$ROOT_PATH/deps/wine/bin/wineserver"
