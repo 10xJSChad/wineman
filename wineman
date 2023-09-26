@@ -24,27 +24,25 @@ WINESERVER="$WINEMAN_ROOT/deps/wine/bin/wineserver"
 
 command="$1"
 
-if [ "$command" = "" ]
-then
-    echo "usage: wineman [COMMAND] [ARGS]"
-    echo "commands:"
-    echo "  wineman setup"
-    echo "  wineman cleanup"
-    echo "  wineman run [APPLICATION NAME]"
-    echo "  wineman add [APPLICATION NAME] [APPLICATION EXECUTABLE]"
-    exit 1
-fi
 
-if [ "$command" = "setup" ]
-then
-    echo "Starting wineman setup"
-    mkdir "$WINEMAN_ROOT"
-    mkdir "$WINEMAN_ROOT/applications" 
-    mkdir "$WINEMAN_ROOT/defaults" 
-    mkdir "$WINEMAN_ROOT/deps" 
-    mkdir "$WINEMAN_ROOT/prefix" 
-    mkdir "$WINEMAN_ROOT/shadercache" 
-    mkdir "$WINEMAN_ROOT/tmp"
+install_wine() {
+    if [ -f "$WINEMAN_ROOT/tmp/wine.tar" ]
+    then
+        echo "Deleting old wine tarball"
+        rm "$WINEMAN_ROOT/tmp/wine.tar"
+    fi
+
+    if [ -f "$WINETRICKS" ]
+    then
+        echo "Deleting previous winetricks installation"
+        rm "$WINETRICKS"
+    fi
+
+    if [ -d "$WINEMAN_ROOT/deps/wine" ]
+    then
+        echo "Deleting previous wine installation"
+        rm -rf "$WINEMAN_ROOT/deps/wine"
+    fi
 
     echo "Downloading wine"
     wget "$WINE_URL" -O "$WINEMAN_ROOT/tmp/wine.tar"
@@ -62,6 +60,11 @@ then
     curl "$WINETRICKS_URL" > "$WINETRICKS"
     chmod +x "$WINETRICKS"
 
+    return 0
+}
+
+
+download_defaults() {
     echo "Downloading environment.sh"
     curl "$ENVIRONMENT_SH_URL" > "$WINEMAN_ROOT/defaults/environment.sh"
 
@@ -70,9 +73,11 @@ then
 
     echo "Downloading icon"
     wget "$ICON_URL" -O "$WINEMAN_ROOT/defaults/icon"
+}
 
+
+setup_wineprefix() {
     echo "Creating base prefix"
-
     echo "Installing corefonts"
     "$WINETRICKS" -q corefonts
 
@@ -95,9 +100,88 @@ then
 
     echo "Initializing prefix"
     exec "$WINEBOOT"
+}
+
+
+clone_wineprefix() {
+    cp -Rsn "$1/." "$2"
+    
+    if ! [ -d "$2/drive_c" ]
+    then
+        echo "$2 does not appear to be a valid wineprefix, aborting."
+        return 1
+    fi
+
+    find "$2" -type l       \
+    ! -name "*.exe"         \
+    ! -name "*.dll"         \
+    ! -name "*.ttf"         \
+    ! -name "*.installed"   \
+    ! -name "*.000"         \
+    ! -name "*.wav"         \
+    ! -name "*.drv"         \
+    ! -name "*.sys"         \
+    ! -name "*.msi"         \
+    ! -name "*.nls"         \
+    -delete
+
+    cp -rn "$1/." "$2"
+    return 0
+}
+
+
+if [ "$command" = "" ]
+then
+    echo "usage: wineman [COMMAND] [ARGS]"
+    echo "commands:"
+    echo "  wineman setup"
+    echo "  wineman cleanup"
+    
+    echo
+    echo "  wineman install-wine    "
+    echo "  wineman download-defaults"
+    echo "  wineman setup-wineprefix"
+    echo
+    echo "  wineman run [APPLICATION NAME]"
+    echo "  wineman add [APPLICATION NAME] [APPLICATION EXECUTABLE]"
+    exit 1
+fi
+
+
+if [ "$command" = "install-wine" ]
+then
+    install_wine
+fi
+
+
+if [ "$command" = "download-defaults" ]
+then
+    download_defaults
+fi
+
+
+if [ "$command" = "setup-wineprefix" ]
+then
+    download_defaults
+fi
+
+
+if [ "$command" = "setup" ]
+then
+    echo "Starting wineman setup"
+    mkdir "$WINEMAN_ROOT"
+    mkdir "$WINEMAN_ROOT/applications" 
+    mkdir "$WINEMAN_ROOT/defaults" 
+    mkdir "$WINEMAN_ROOT/deps" 
+    mkdir "$WINEMAN_ROOT/prefix" 
+    mkdir "$WINEMAN_ROOT/shadercache" 
+    mkdir "$WINEMAN_ROOT/tmp"
+
+    install_wine
+    download_defaults
+    setup_wineprefix
 
     echo "Success!"
-    exit 0
 fi
 
 
@@ -106,6 +190,7 @@ then
     if [ "$2" = "" ] || [ "$3" = "" ]
     then
         echo "Syntax error"
+        exit 1
     fi
 
     application_name="$2"
@@ -115,22 +200,7 @@ then
 
     source_prefix="$WINEMAN_ROOT/prefix/pf_base"
     destination_prefix="$WINEMAN_ROOT/prefix/pf_$application_name"
-
-    cp -Rsn "$source_prefix/." "$destination_prefix"
-    find "$destination_prefix" -type l    \
-    ! -name "*.exe" \
-    ! -name "*.dll" \
-    ! -name "*.ttf" \
-    ! -name "*.installed" \
-    ! -name "*.000" \
-    ! -name "*.wav" \
-    ! -name "*.drv" \
-    ! -name "*.sys" \
-    ! -name "*.msi" \
-    ! -name "*.nls" \
-    -delete
-
-    cp -rn "$source_prefix/." "$destination_prefix"
+    clone_wineprefix "$source_prefix" "$destination_prefix"
 
     mkdir "$WINEMAN_ROOT/shadercache/$application_name"
     mkdir "$application_dir"
