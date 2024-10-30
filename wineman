@@ -261,9 +261,11 @@ then
     application_config="$application_dir/config.sh"
     
     WINEMAN_APP_DIR="$application_dir"
+    WINEPREFIX="$WINEMAN_APP_DIR/prefix"
 
     . "$application_config"
     . "$APP_ENVIRONMENT"
+
 
     "$WINE" "$APP_EXECUTABLE"
 fi
