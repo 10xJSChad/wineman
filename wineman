@@ -254,18 +254,44 @@ then
     if [ "$2" = "" ]
     then
         echo "Syntax error"
+        exit 1
     fi
 
     application_name="$2"
     application_dir="$WINEMAN_ROOT/applications/$application_name"
     application_config="$application_dir/config.sh"
-    
+
+    # default to base wine, correct later if needed
+    wine_executable="$WINE"
+
+    # check for application specific wine directory
+    if [ -d "$application_dir/wine" ]
+    then
+        wine_executable="$application_dir/wine/bin/wine"
+    else
+        # check for symlink to wine
+        if [ -L "$application_dir/wine" ]
+        then
+            # follow symlink
+            # i dont actually know if this is a good idea
+            wine_executable=$(readlink -f "$application_dir/wine")
+        fi
+    fi 
+
     WINEMAN_APP_DIR="$application_dir"
-    WINEPREFIX="$WINEMAN_APP_DIR/prefix"
+	WINEPREFIX="$WINEMAN_APP_DIR/prefix"
 
+    # source the app config for APP_EXECUTABLE and APP_ENVIRONMENT
     . "$application_config"
-    . "$APP_ENVIRONMENT"
 
-
-    "$WINE" "$APP_EXECUTABLE"
+    # check for umu-run (this is experimental)
+    # we do not use the app environment when running with umu
+    if [ -f "$application_dir/umu-run" ]
+    then
+        umu_executable="$application_dir/umu-run"
+        GAMEID=0 "$umu_executable" "$APP_EXECUTABLE"
+    else
+        . "$APP_ENVIRONMENT"
+        "$wine_executable" "$APP_EXECUTABLE"
+    fi
 fi
