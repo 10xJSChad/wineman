@@ -279,7 +279,7 @@ then
     fi 
 
     WINEMAN_APP_DIR="$application_dir"
-	WINEPREFIX="$WINEMAN_APP_DIR/prefix"
+    WINEPREFIX="$WINEMAN_APP_DIR/prefix"
 
     # source the app config for APP_EXECUTABLE and APP_ENVIRONMENT
     . "$application_config"
