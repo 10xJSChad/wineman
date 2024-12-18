@@ -3,6 +3,7 @@
 
 WINEMAN_EXECUTABLE_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
+
 if [ "$XDG_DATA_HOME" = "" ]
 then
     WINEMAN_ROOT="$HOME/.local/share/wineman"
@@ -10,11 +11,13 @@ else
     WINEMAN_ROOT="$XDG_DATA_HOME"
 fi
 
+
 WINE_URL="https://github.com/GloriousEggroll/wine-ge-custom/releases/download/GE-Proton8-26/wine-lutris-GE-Proton8-26-x86_64.tar.xz"
 WINETRICKS_URL="https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks"
 DXVK_CONF_URL="https://raw.githubusercontent.com/10xJSChad/wineman/master/defaults/dxvk.conf"
 ENVIRONMENT_SH_URL="https://raw.githubusercontent.com/10xJSChad/wineman/master/defaults/environment.sh"
 ICON_URL="https://github.com/10xJSChad/wineman/raw/master/defaults/icon"
+
 
 WINEDEBUG="-all"
 WINEPREFIX="$WINEMAN_ROOT/prefix/pf_base"
@@ -82,9 +85,6 @@ setup_wineprefix() {
     echo "Installing corefonts"
     "$WINETRICKS" -q corefonts
 
-    # echo "Installing ie8"
-    # sh "$WINETRICKS" -q ie8
-
     echo "Installing dxvk"
     "$WINETRICKS" -q dxvk
 
@@ -94,8 +94,9 @@ setup_wineprefix() {
     echo "Enabling csmt"
     "$WINETRICKS" csmt=on
 
+    # this stuff probably isn't needed anymore, but it was in the past to get
+    # certain games to run.
     echo "Setting Windows version to win10"
-
     sed -i '/CurrentBuildNumber/c\"CurrentBuildNumber"="19042"' "$WINEPREFIX/system.reg"
     sed -i '/CurrentBuild"/c\"CurrentBuild"="19042"' "$WINEPREFIX/system.reg"
 
@@ -105,7 +106,7 @@ setup_wineprefix() {
 
 
 clone_wineprefix() {
-    cp -Rsn "$1/." "$2"
+    cp -Rs --update=none "$1/." "$2"
     
     if ! [ -d "$2/drive_c" ]
     then
@@ -126,7 +127,7 @@ clone_wineprefix() {
     ! -name "*.nls"         \
     -delete
 
-    cp -rn "$1/." "$2"
+    cp -r --update=none "$1/." "$2"
     return 0
 }
 
@@ -138,7 +139,6 @@ then
     echo "  wineman setup"
     echo "  wineman reinstall"
     echo "  wineman upgrade"
-    
     echo
     echo "  wineman install-wine"
     echo "  wineman download-defaults"
@@ -146,7 +146,7 @@ then
     echo
     echo "  wineman run [APPLICATION NAME]"
     echo "  wineman add [APPLICATION NAME] [APPLICATION EXECUTABLE]"
-    exit 1
+    exit 0
 fi
 
 
@@ -164,7 +164,7 @@ fi
 
 if [ "$command" = "setup-wineprefix" ]
 then
-    download_defaults
+    setup_wineprefix
 fi
 
 
@@ -197,8 +197,13 @@ then
 
     application_name="$2"
     application_executable=$(realpath "$3")
+    application_executable_dir=$(dirname "$application_executable")
     application_dir="$WINEMAN_ROOT/applications/$application_name"
     application_config="$application_dir/config.sh"
+
+    # .desktop files should only contain alphanumeric characters, 
+    # dashes, and underscores. strip out any other characters
+    desktop_filename=$(echo "$application_name" | tr -cd '[:alnum:]-_')
 
     source_prefix="$WINEMAN_ROOT/prefix/pf_base"
     destination_prefix="$WINEMAN_ROOT/prefix/pf_$application_name"
@@ -209,24 +214,24 @@ then
 
     ln -s "$WINEMAN_ROOT/shadercache/$application_name" "$application_dir/shadercache"
     ln -s "$WINEMAN_ROOT/prefix/pf_$application_name" "$application_dir/prefix"
-    cp -Rsn "$WINEMAN_ROOT/defaults/". "$application_dir"
+    cp -Rs --update=none "$WINEMAN_ROOT/defaults/". "$application_dir"
 
     echo "#!/bin/sh -a" > "$application_config"
     echo "APP_NAME=\"$application_name\"" >> "$application_config"
     echo "APP_EXECUTABLE=\"$application_executable\"" >> "$application_config"
     echo "APP_ENVIRONMENT=\"$application_dir/environment.sh\"" >> "$application_config"
 
-    echo "[Desktop Entry]" > "$application_dir/$application_name.desktop"
-    echo "Type=Application" >> "$application_dir/$application_name.desktop"
-    echo "Name=$application_name" >> "$application_dir/$application_name.desktop"
-    echo "Icon=$application_dir/icon" >> "$application_dir/$application_name.desktop"
-    echo "Path=$WINEMAN_EXECUTABLE_DIR" >> "$application_dir/$application_name.desktop"
-    echo "Exec=$WINEMAN_EXECUTABLE_DIR/wineman run \"$application_name\"" >> "$application_dir/$application_name.desktop"
-    chmod +x "$application_dir/$application_name.desktop"
+    echo "[Desktop Entry]" > "$application_dir/$desktop_filename.desktop"
+    echo "Type=Application" >> "$application_dir/$desktop_filename.desktop"
+    echo "Name=$application_name" >> "$application_dir/$desktop_filename.desktop"
+    echo "Icon=$application_dir/icon" >> "$application_dir/$desktop_filename.desktop"
+    echo "Path=$application_executable_dir" >> "$application_dir/$desktop_filename.desktop"
+    echo "Exec=$WINEMAN_EXECUTABLE_DIR/wineman run \"$application_name\"" >> "$application_dir/$desktop_filename.desktop"
+    chmod +x "$application_dir/$desktop_filename.desktop"
     
     if [ -d "$HOME/.local/share/applications" ]
     then
-        ln -s "$application_dir/$application_name.desktop" "$HOME/.local/share/applications/wineman_$application_name.desktop" 
+        ln -s "$application_dir/$desktop_filename.desktop" "$HOME/.local/share/applications/wineman-$desktop_filename.desktop" 
     fi
 fi
 
@@ -273,7 +278,7 @@ then
         if [ -L "$application_dir/wine" ]
         then
             # follow symlink
-            # i dont actually know if this is a good idea
+            # i dont actually know if this is a good idea but it fixed an issue
             wine_executable=$(readlink -f "$application_dir/wine")
         fi
     fi 
