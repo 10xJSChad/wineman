@@ -1,6 +1,7 @@
 #!/bin/sh -a
 #shellcheck disable=SC2129
 
+
 WINEMAN_EXECUTABLE_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 
@@ -129,6 +130,27 @@ clone_wineprefix() {
 
     cp -r --update=none "$1/." "$2"
     return 0
+}
+
+
+do_init() {
+    app_dir="$1"
+
+    if [ -d "$app_dir/init" ]
+    then
+        # stop if empty
+        if [ "$(ls -A "$app_dir/init")" = "" ]
+        then
+            return 0
+        fi
+
+        for script in "$app_dir/init"/*
+        do
+            "$script"
+        done
+    fi
+
+    exit 1
 }
 
 
@@ -288,6 +310,9 @@ then
 
     # source the app config for APP_EXECUTABLE and APP_ENVIRONMENT
     . "$application_config"
+
+    # run init scripts
+    do_init "$WINEMAN_APP_DIR"
 
     # check for umu-run (this is experimental)
     # we do not use the app environment when running with umu
