@@ -3,14 +3,7 @@
 
 
 WINEMAN_EXECUTABLE_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-
-
-if [ "$XDG_DATA_HOME" = "" ]
-then
-    WINEMAN_ROOT="$HOME/.local/share/wineman"
-else
-    WINEMAN_ROOT="$XDG_DATA_HOME"
-fi
+WINEMAN_ROOT="$HOME/.local/share/wineman"
 
 
 WINE_URL="https://github.com/GloriousEggroll/wine-ge-custom/releases/download/GE-Proton8-26/wine-lutris-GE-Proton8-26-x86_64.tar.xz"
