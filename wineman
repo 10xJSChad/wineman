@@ -149,8 +149,6 @@ do_init() {
             "$script"
         done
     fi
-
-    exit 1
 }
 
 
